@@ -1,0 +1,9 @@
+# paybybot3.yml à la racine de votre dépôt
+COMPTE:
+  plate: ""
+  paybyphone:
+    # Les valeurs ici seront ignorées, car nous utiliserons les secrets
+    # dans le workflow pour surcharger ces valeurs.
+    login: "" 
+    password: ""
+  paymentAccountId: ""
