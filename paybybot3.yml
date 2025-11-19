@@ -4,3 +4,12 @@ example_account:
     login: "PLACEHOLDER_USER"
     password: "PLACEHOLDER_PASS"
   paymentAccountId: "PLACEHOLDER_PAYMENT_ID"
+ apprise:
+    services:
+      - mailto:
+          # Ce placeholder sera remplacé par l'URL SMTP complète (login/pass/destinataire)
+          service_url: "PLACEHOLDER_NOTIF_URL" 
+          tag:
+            - "broadcast-warning"
+            - "broadcast-failure"
+            - "broadcast-success"
