@@ -6,6 +6,7 @@ on:
   schedule:
     # Tous les jours à 07:00 UTC (ajustez l'heure selon votre besoin)
     - cron: '0 7 * * *'
+  # Permet de lancer manuellement le workflow depuis l'interface GitHub
   workflow_dispatch:
 
 jobs:
@@ -22,27 +23,34 @@ jobs:
         python-version: '3.12'
         
     - name: 📦 Installer PayByBot3
+      # Utilise une étape 'run' dédiée pour l'installation
       run: pip install paybybot3
 
     - name: 🔒 Injection Sécurisée des Secrets dans le YAML
+      # Injecte les secrets dans le fichier paybybot3.yml à la racine du dépôt
       run: |
-        # 1. Injection des Placeholders dans le fichier paybybot3.yml
+        # Injections : Les noms des secrets sont tirés de votre coffre-fort (PBP_PLATE, PAYBYPHONE_LOGIN, etc.)
         
         # Injection Plaque
         sed -i "s|PLACEHOLDER_PLATE|${{ secrets.PBP_PLATE }}|g" paybybot3.yml
-        # Injection Login
+        # Injection Login (votre secret PAYBYPHONE_LOGIN)
         sed -i "s|PLACEHOLDER_USER|${{ secrets.PAYBYPHONE_LOGIN }}|g" paybybot3.yml
-        # Injection Mot de passe
+        # Injection Mot de passe (votre secret PAYBYPHONE_PASS)
         sed -i "s|PLACEHOLDER_PASS|${{ secrets.PAYBYPHONE_PASS }}|g" paybybot3.yml
         # Injection ID de Paiement
         sed -i "s|PLACEHOLDER_PAYMENT_ID|${{ secrets.PBP_PAYMENT_ID }}|g" paybybot3.yml
         
         echo "Le fichier de configuration a été mis à jour de manière sécurisée."
 
+    - name: 📁 Déplacer le fichier de configuration
+      # Copie le fichier modifié vers l'emplacement par défaut où paybybot3 le cherche
+      run: |
+        mkdir -p ~/.config # Crée le dossier .config
+        cp paybybot3.yml ~/.config/paybybot3.yml # Copie le fichier dans le dossier utilisateur
+        
     - name: 🅿️ Exécuter le Paiement Hebdomadaire
-      # Passer les secrets en tant que variables d'environnement (PAYBYPHONE_USER/PASS est le format requis par le code du bot)
+      # On passe le login/pass dans l'environnement (variable PAYBYPHONE_USER requise par le bot)
       env:
-        # Le secret PAYBYPHONE_LOGIN est injecté dans la variable d'environnement attendue PAYBYPHONE_USER
         PAYBYPHONE_USER: ${{ secrets.PAYBYPHONE_LOGIN }} 
         PAYBYPHONE_PASS: ${{ secrets.PAYBYPHONE_PASS }}
       run: |
