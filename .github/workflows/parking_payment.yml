@@ -1,0 +1,58 @@
+# .github/workflows/parking_payment.yml
+
+name: Paiement Hebdo PayByPhone
+
+on:
+  # Déclenche l'action tous les jours à 8h00 (heure de Paris/UTC+1)
+  schedule:
+    # L'heure est en UTC. 8h00 CET/CEST équivaut à 7h00 ou 6h00 UTC.
+    # Pour être précis, vous devez ajuster en fonction du passage heure d'été/hiver.
+    # Ici, 06:00 UTC (8h00 heure d'été ou 7h00 heure d'hiver à Paris)
+    - cron: '0 7 * * *'
+  # Permet de lancer manuellement le workflow depuis l'interface GitHub
+  workflow_dispatch:
+
+jobs:
+  pay_parking:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: ⬇️ Checkout du code
+      uses: actions/checkout@v4
+
+    - name: 🛠️ Configurer Python et PayByBot3
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+      run: pip install paybybot3
+
+    - name: 🔒 Injection Sécurisée des Secrets dans le YAML
+      # Cette étape modifie le fichier paybybot3.yml juste avant l'exécution
+      run: |
+        # IMPORTANT: Nous utilisons les variables d'environnement pour injecter les secrets
+        # pour éviter qu'ils n'apparaissent dans les logs (le 'echo' est évité)
+        
+        # 1. Injection de la plaque, login, password et Payment ID dans le fichier
+        sed -i "s|PLACEHOLDER_PLATE|${{ secrets.PBP_PLATE }}|g" paybybot3.yml
+        sed -i "s|PLACEHOLDER_USER|${{ secrets.PAYBYPHONE_LOGIN }}|g" paybybot3.yml
+        sed -i "s|PLACEHOLDER_PASS|${{ secrets.PAYBYPHONE_PASS }}|g" paybybot3.yml
+        sed -i "s|PLACEHOLDER_PAYMENT_ID|${{ secrets.PBP_PAYMENT_ID }}|g" paybybot3.yml
+        
+        echo "Le fichier de configuration a été mis à jour de manière sécurisée."
+
+    - name: 🅿️ Exécuter le Paiement Quotidien
+      # Les secrets PBP_USER/PBP_PASS ne sont plus nécessaires ici car ils ont été injectés dans le YAML,
+      # mais nous les passons pour la double vérification du code paybybot3, juste au cas où.
+      env:
+        PAYBYPHONE_USER: ${{ secrets.PAYBYPHONE_LOGIN }}
+        PAYBYPHONE_PASS: ${{ secrets.PAYBYPHONE_PASS }}
+      run: |
+        # Lancement de la commande 'pay'
+        # Le nom du compte est un secret, ainsi que la location et le rate
+        python -m paybybot3 pay ${{ secrets.CONFIG_ACCOUNT_NAME }} \
+          --location ${{ secrets.PBP_LOCATION }} \
+          --rate ${{ secrets.PBP_RATE }} \
+          --duration 6 \
+          --unit Days
+        
+        echo "La tâche de paiement est terminée. Vérifiez le log ci-dessus."
