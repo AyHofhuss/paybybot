@@ -44,17 +44,14 @@ jobs:
         
         echo "Le fichier de configuration a été mis à jour de manière sécurisée."
 
-    - name: 📁 Déplacer le fichier de configuration
-      run: |
-        mkdir -p ~/.config
-        cp paybybot3.yml ~/.config/paybybot3.yml
-        
     - name: 🅿️ Exécuter le Paiement Hebdomadaire
       env:
         PAYBYPHONE_USER: ${{ secrets.PAYBYPHONE_LOGIN }} 
         PAYBYPHONE_PASS: ${{ secrets.PAYBYPHONE_PASS }}
       run: |
+        # Utilisation de --config-file pour lire le fichier directement à la racine (plus fiable)
         python -m paybybot3 pay ${{ secrets.CONFIG_ACCOUNT_NAME }} \
+          --config-file ./paybybot3.yml \
           --location ${{ secrets.PBP_LOCATION }} \
           --rate ${{ secrets.PBP_RATE }} \
           --duration 6 \
