@@ -25,29 +25,11 @@ jobs:
     - name: 📦 Installer PayByBot3 et Apprise
       run: pip install paybybot3 apprise
 
-  # --- DELETE
-    - name: 📧 TEST ISOLÉ - Envoi d un E-mail de Débogage
-      run: |
-        # Configuration de l'URL du SERVEUR avec le port 465 (Alternative sécurisée)
-        SERVER_URL="mailtos://${{ secrets.NOTIF_USER }}:${{ secrets.NOTIF_PASS }}@smtp.gmail.com:465"
-        
-        # Le destinataire doit être passé séparément pour éviter l'erreur d'interprétation
-        DESTINATION_URL="mailto:${{ secrets.NOTIF_USER }}"
-        
-        echo "Serveur utilisé : $SERVER_URL"
-        
-        # Exécution d'Apprise en mode DEBUG (-vv) pour obtenir des logs détaillés
-        apprise -vv -b "Ceci est un test de connexion depuis GitHub Actions via le port 465." \
-          --title "Test SMTP 465" \
-          "$SERVER_URL" \
-          "$DESTINATION_URL"
-  # --- DELETE
-
 
     - name: 🔒 Injection Sécurisée des Secrets dans le YAML (y compris les notifications)
       run: |
         # 1. Préparation de l'URL de notification (Utilise le mail personnel pour l'envoi et la réception)
-        NOTIF_URL="mailtos://${{ secrets.NOTIF_USER }}:${{ secrets.NOTIF_PASS }}@smtp.gmail.com:587?to=${{ secrets.NOTIF_USER }}&name=PayByBot3"
+        NOTIF_URL="mailtos://${{ secrets.NOTIF_USER }}:${{ secrets.NOTIF_PASS }}@smtp.gmail.com:465?to=${{ secrets.NOTIF_USER }}&name=PayByBot3"
 
         # 2. Injection des Placeholders dans le fichier paybybot3.yml
         # Injection Plaque
