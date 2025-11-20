@@ -28,19 +28,21 @@ jobs:
   # --- DELETE
     - name: 📧 TEST ISOLÉ - Envoi d un E-mail de Débogage
       run: |
-        # 1. Configuration de l'URL d'envoi (SIMPLIFIÉE)
-        # Note: Cette variable n'est utilisée que pour le debug log ci-dessous
-        NOTIF_URL="mailtos://${{ secrets.NOTIF_USER }}:${{ secrets.NOTIF_PASS }}@smtp.gmail.com:587"
+        # 1. Configuration de l'URL du SERVEUR (Connexion)
+        SERVER_URL="mailtos://${{ secrets.NOTIF_USER }}:${{ secrets.NOTIF_PASS }}@smtp.gmail.com:587"
         
-        echo "Tentative d'envoi de mail avec : $NOTIF_URL"
+        # 2. Configuration de l'URL du DESTINATAIRE
+        DESTINATION_URL="mailto:${{ secrets.NOTIF_USER }}"
         
-        # 2. Exécution d'Apprise en mode DEBUG (-vv)
-        # Utilisation de guillemets simples ( ' ) autour de l'URL complète pour éviter l'interprétation par le shell
+        echo "Serveur : $SERVER_URL"
+        echo "Destination : $DESTINATION_URL"
+        
+        # 3. Exécution d'Apprise en mode DEBUG (-vv)
+        # On passe deux arguments : l'URL du serveur (pour l'authentification) et l'URL de destination.
         apprise -vv -b "Ceci est un test de connexion reussi depuis GitHub Actions." \
           --title "Test Requis" \
-          'mailtos://${{ secrets.NOTIF_USER }}:${{ secrets.NOTIF_PASS }}@smtp.gmail.com:587?to=${{ secrets.NOTIF_USER }}'
-#        ^                                                                                                                 ^
-#        Guillemets simples ajoutés ici
+          "$SERVER_URL" \
+          "$DESTINATION_URL"
   # --- DELETE
 
 
