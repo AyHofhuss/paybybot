@@ -28,19 +28,17 @@ jobs:
   # --- DELETE
     - name: 📧 TEST ISOLÉ - Envoi d un E-mail de Débogage
       run: |
-        # 1. Configuration de l'URL du SERVEUR (Connexion)
-        SERVER_URL="mailtos://${{ secrets.NOTIF_USER }}:${{ secrets.NOTIF_PASS }}@smtp.gmail.com:587"
+        # Configuration de l'URL du SERVEUR avec le port 465 (Alternative sécurisée)
+        SERVER_URL="mailtos://${{ secrets.NOTIF_USER }}:${{ secrets.NOTIF_PASS }}@smtp.gmail.com:465"
         
-        # 2. Configuration de l'URL du DESTINATAIRE
+        # Le destinataire doit être passé séparément pour éviter l'erreur d'interprétation
         DESTINATION_URL="mailto:${{ secrets.NOTIF_USER }}"
         
-        echo "Serveur : $SERVER_URL"
-        echo "Destination : $DESTINATION_URL"
+        echo "Serveur utilisé : $SERVER_URL"
         
-        # 3. Exécution d'Apprise en mode DEBUG (-vv)
-        # On passe deux arguments : l'URL du serveur (pour l'authentification) et l'URL de destination.
-        apprise -vv -b "Ceci est un test de connexion reussi depuis GitHub Actions." \
-          --title "Test Requis" \
+        # Exécution d'Apprise en mode DEBUG (-vv) pour obtenir des logs détaillés
+        apprise -vv -b "Ceci est un test de connexion depuis GitHub Actions via le port 465." \
+          --title "Test SMTP 465" \
           "$SERVER_URL" \
           "$DESTINATION_URL"
   # --- DELETE
