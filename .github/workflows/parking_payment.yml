@@ -54,7 +54,7 @@ jobs:
           --location ${{ secrets.PBP_LOCATION }} \
           --rate ${{ secrets.PBP_RATE }} \
           --duration 6 \
-          --unit Days
+          --unit Days \
           --debug
         
         echo "La tâche de paiement est terminée. Vérifiez le log ci-dessus."
