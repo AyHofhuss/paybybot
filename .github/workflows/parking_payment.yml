@@ -23,14 +23,18 @@ jobs:
         python-version: '3.12'
         
     - name: 📦 Installer PayByBot3
-      # Utilise une étape 'run' dédiée pour l'installation
-      run: pip install paybybot3
+      run: pip install paybybot3 apprise # Installation d'Apprise est nécessaire pour les notifications
 
     - name: 🔒 Injection Sécurisée des Secrets dans le YAML
       # Injecte les secrets dans le fichier paybybot3.yml à la racine du dépôt
       run: |
         # Injections : Les noms des secrets sont tirés de votre coffre-fort (PBP_PLATE, PAYBYPHONE_LOGIN, etc.)
         
+        # 1. Préparation de l'URL de notification (Utilise le mail personnel pour l'envoi et la réception)
+        # Note: smtp.gmail.com:587 est l'hôte par défaut pour Gmail.
+        NOTIF_URL="smtps://${{ secrets.NOTIF_USER }}:${{ secrets.NOTIF_PASS }}@smtp.gmail.com:587?to=${{ secrets.NOTIF_USER }}&name=PayByBot3"
+
+        # 2. Injection des Placeholders dans le fichier paybybot3.yml
         # Injection Plaque
         sed -i "s|PLACEHOLDER_PLATE|${{ secrets.PBP_PLATE }}|g" paybybot3.yml
         # Injection Login (votre secret PAYBYPHONE_LOGIN)
@@ -39,6 +43,8 @@ jobs:
         sed -i "s|PLACEHOLDER_PASS|${{ secrets.PAYBYPHONE_PASS }}|g" paybybot3.yml
         # Injection ID de Paiement
         sed -i "s|PLACEHOLDER_PAYMENT_ID|${{ secrets.PBP_PAYMENT_ID }}|g" paybybot3.yml
+        # Injection de la notification
+        sed -i "s|PLACEHOLDER_NOTIF_URL|$NOTIF_URL|g" paybybot3.yml
         
         echo "Le fichier de configuration a été mis à jour de manière sécurisée."
 
