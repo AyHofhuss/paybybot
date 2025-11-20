@@ -10,6 +10,7 @@ example_account:
       # Ce placeholder sera remplacé par l'URL SMTP complète (login/pass/destinataire)
         service_url: "PLACEHOLDER_NOTIF_URL" 
         tag:
+          - "broadcast-info"
+          - "broadcast-success"
           - "broadcast-warning"
           - "broadcast-failure"
-          - "broadcast-success"
