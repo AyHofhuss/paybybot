@@ -4,9 +4,7 @@ name: Paiement Hebdo PayByPhone
 
 on:
   schedule:
-    # Tous les jours à 07:00 UTC (ajustez l'heure selon votre besoin)
     - cron: '0 7 * * *'
-  # Permet de lancer manuellement le workflow depuis l'interface GitHub
   workflow_dispatch:
 
 jobs:
@@ -17,21 +15,19 @@ jobs:
     - name: ⬇️ Checkout du code
       uses: actions/checkout@v4
 
+    # --- ÉTAPE 1 : Configuration Python (uses) ---
     - name: 🛠️ Configurer Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
         
-    - name: 📦 Installer PayByBot3
-      run: pip install paybybot3 apprise # Installation d'Apprise est nécessaire pour les notifications
+    # --- ÉTAPE 2 : Installation des dépendances (run) ---
+    - name: 📦 Installer PayByBot3 et Apprise
+      run: pip install paybybot3 apprise 
 
-    - name: 🔒 Injection Sécurisée des Secrets dans le YAML
-      # Injecte les secrets dans le fichier paybybot3.yml à la racine du dépôt
+    - name: 🔒 Injection Sécurisée des Secrets dans le YAML (y compris les notifications)
       run: |
-        # Injections : Les noms des secrets sont tirés de votre coffre-fort (PBP_PLATE, PAYBYPHONE_LOGIN, etc.)
-        
         # 1. Préparation de l'URL de notification (Utilise le mail personnel pour l'envoi et la réception)
-        # Note: smtp.gmail.com:587 est l'hôte par défaut pour Gmail.
         NOTIF_URL="smtps://${{ secrets.NOTIF_USER }}:${{ secrets.NOTIF_PASS }}@smtp.gmail.com:587?to=${{ secrets.NOTIF_USER }}&name=PayByBot3"
 
         # 2. Injection des Placeholders dans le fichier paybybot3.yml
@@ -49,18 +45,15 @@ jobs:
         echo "Le fichier de configuration a été mis à jour de manière sécurisée."
 
     - name: 📁 Déplacer le fichier de configuration
-      # Copie le fichier modifié vers l'emplacement par défaut où paybybot3 le cherche
       run: |
-        mkdir -p ~/.config # Crée le dossier .config
-        cp paybybot3.yml ~/.config/paybybot3.yml # Copie le fichier dans le dossier utilisateur
+        mkdir -p ~/.config
+        cp paybybot3.yml ~/.config/paybybot3.yml
         
     - name: 🅿️ Exécuter le Paiement Hebdomadaire
-      # On passe le login/pass dans l'environnement (variable PAYBYPHONE_USER requise par le bot)
       env:
         PAYBYPHONE_USER: ${{ secrets.PAYBYPHONE_LOGIN }} 
         PAYBYPHONE_PASS: ${{ secrets.PAYBYPHONE_PASS }}
       run: |
-        # Lancement de la commande 'pay'
         python -m paybybot3 pay ${{ secrets.CONFIG_ACCOUNT_NAME }} \
           --location ${{ secrets.PBP_LOCATION }} \
           --rate ${{ secrets.PBP_RATE }} \
