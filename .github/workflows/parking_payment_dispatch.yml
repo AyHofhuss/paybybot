@@ -1,0 +1,86 @@
+# Fichier : .github/workflows/parking_payment_dispatch.yml
+
+name: Paiement Ponctuel (Relance Planifiée)
+
+on:
+  # Ce workflow s'exécute UNIQUEMENT via l'API (déclenché par le job principal)
+  workflow_dispatch:
+    inputs:
+      # L'heure exacte à laquelle nous voulons que le job commence (précision maximale)
+      launch_time:
+        description: 'Heure planifiée de l''exécution (ISO 8601 UTC)'
+        required: true
+      # Le nom du compte à payer, transmis par le job principal
+      target_account:
+        description: 'Nom du compte PayByBot3 à payer'
+        required: true
+
+jobs:
+  relance_paiement:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: ⬇️ Checkout du code
+        uses: actions/checkout@v4
+      
+      - name: 🛠️ Configurer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      # 1. Attendre l'heure planifiée
+      - name: ⏳ Attendre l'Heure de Lancement Planifiée
+        run: |
+          # Convertit l'heure cible (passée en input) en timestamp UNIX (secondes)
+          PLANNED_TIME=$(date -u -d "${{ github.event.inputs.launch_time }}" +%s)
+          # Récupère l'heure actuelle du runner
+          CURRENT_TIME=$(date -u +%s)
+          # Calcule le temps d'attente restant
+          WAIT_SECONDS=$((PLANNED_TIME - CURRENT_TIME))
+          
+          if [ "$WAIT_SECONDS" -gt 0 ]; then
+            echo "Attente de $WAIT_SECONDS secondes avant la relance du paiement pour atteindre l'heure cible."
+            sleep $WAIT_SECONDS
+          fi
+
+      # 2. Installer
+      - name: 📦 Installer Dépendances
+        run: pip install pyyaml paybybot3
+
+      # 3. Injecter les secrets
+      - name: 🔒 Injecter les Secrets (Python)
+        env:
+          CONFIG_FILE: ./paybybot3.yml
+          CONFIG_ACCOUNT_NAME: ${{ github.event.inputs.target_account }} # Utilise l'input du dispatch
+          # Secrets pour l'injection via inject_secrets()
+          PBP_PLATE: ${{ secrets.PBP_PLATE }}
+          PAYBYPHONE_LOGIN: ${{ secrets.PAYBYPHONE_LOGIN }} 
+          PAYBYPHONE_PASS: ${{ secrets.PAYBYPHONE_PASS }}
+          PBP_PAYMENT_ID: ${{ secrets.PBP_PAYMENT_ID }}
+          # NOTE: Le script Python inject_secrets ne fait rien de ces variables, mais elles doivent être là pour éviter une erreur
+          NOTIF_USER: DUMMY_USER 
+          NOTIF_PASS: DUMMY_PASS
+
+        run: python parking_scheduler.py
+
+      # 4. Exécuter le Paiement Final (La session est maintenant expirée)
+      - name: 🅿️ Exécuter le Paiement Final
+        env:
+          CONFIG_ACCOUNT_NAME: ${{ github.event.inputs.target_account }}
+          CONFIG_FILE: ./paybybot3.yml
+          PBP_LOCATION: ${{ secrets.PBP_LOCATION }}
+          PBP_RATE: ${{ secrets.PBP_RATE }}
+          PBP_DURATION: 6
+          PBP_UNIT: Days
+
+        run: |
+          # Nous n'avons pas besoin de toute la logique de "execute_payment_and_analyze" ici, 
+          # car on sait que l'heure d'expiration est atteinte. On lance le paiement directement.
+          python -m paybybot3 pay ${{ env.CONFIG_ACCOUNT_NAME }} \
+            --config ./paybybot3.yml \
+            --location ${{ env.PBP_LOCATION }} \
+            --rate ${{ env.PBP_RATE }} \
+            --duration 6 \
+            --unit Days
+          
+          echo "Paiement ponctuel terminé."
