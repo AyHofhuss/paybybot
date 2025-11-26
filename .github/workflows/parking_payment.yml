@@ -1,11 +1,12 @@
-# .github/workflows/parking_payment.yml
+# Fichier : .github/workflows/parking_payment.yml
 
-name: Paiement Hebdo PayByPhone
+name: Paiement Hebdomadaire & Planification
 
 on:
   schedule:
-    - cron: '0 7 * * *'
-  workflow_dispatch:
+    # Tous les jours à 6h UCT soit 7/8h à Paris
+    - cron: '0 6 * * *' 
+  workflow_dispatch: # Permet de lancer manuellement pour les tests
 
 jobs:
   pay_parking:
@@ -15,46 +16,34 @@ jobs:
     - name: ⬇️ Checkout du code
       uses: actions/checkout@v4
 
-    # --- ÉTAPE 1 : Configuration Python (uses) ---
     - name: 🛠️ Configurer Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
         
-    # --- ÉTAPE 2 : Installation des dépendances (run) ---
-    - name: 📦 Installer PayByBot3 et Apprise
-      run: pip install paybybot3 apprise
-
-
-    - name: 🔒 Injection Sécurisée des Secrets dans le YAML (y compris les notifications)
+    - name: 📦 Installer PayByBot3, et les packages
       run: |
-        # 1. Préparation de l'URL de notification (Utilise le mail personnel pour l'envoi et la réception)
-        NOTIF_URL="mailtos://${{ secrets.NOTIF_USER }}:${{ secrets.NOTIF_PASS }}@smtp.gmail.com:465?to=${{ secrets.NOTIF_USER }}&name=PayByBot3"
+        pip install pyyaml paybybot3
+        # Installation de l'outil GitHub CLI, nécessaire pour la planification (dispatch)
+        sudo apt-get update && sudo apt-get install -y gh
 
-        # 2. Injection des Placeholders dans le fichier paybybot3.yml
-        # Injection Plaque
-        sed -i "s|PLACEHOLDER_PLATE|${{ secrets.PBP_PLATE }}|g" paybybot3.yml
-        # Injection Login (votre secret PAYBYPHONE_LOGIN)
-        sed -i "s|PLACEHOLDER_USER|${{ secrets.PAYBYPHONE_LOGIN }}|g" paybybot3.yml
-        # Injection Mot de passe (votre secret PAYBYPHONE_PASS)
-        sed -i "s|PLACEHOLDER_PASS|${{ secrets.PAYBYPHONE_PASS }}|g" paybybot3.yml
-        # Injection ID de Paiement
-        sed -i "s|PLACEHOLDER_PAYMENT_ID|${{ secrets.PBP_PAYMENT_ID }}|g" paybybot3.yml
-        # Injection de la notification
-        sed -i "s|PLACEHOLDER_NOTIF_URL|$NOTIF_URL|g" paybybot3.yml
-        
-        echo "Le fichier de configuration a été mis à jour de manière sécurisée."
-
-    - name: 🅿️ Exécuter le Paiement Hebdomadaire
+    - name: 🚀 Exécuter la Logique de Paiement et Planification (Python)
+      # Définition des variables d'environnement nécessaires au script Python
       env:
-        PAYBYPHONE_USER: ${{ secrets.PAYBYPHONE_LOGIN }} 
-        PAYBYPHONE_PASS: ${{ secrets.PAYBYPHONE_PASS }}
-      run: |
-        python -m paybybot3 pay ${{ secrets.CONFIG_ACCOUNT_NAME }} \
-          --config ./paybybot3.yml \
-          --location ${{ secrets.PBP_LOCATION }} \
-          --rate ${{ secrets.PBP_RATE }} \
-          --duration 6 \
-          --unit Days
+        CONFIG_FILE: ./paybybot3.yml
+        CONFIG_ACCOUNT_NAME: ${{ secrets.CONFIG_ACCOUNT_NAME }}
+        PBP_LOCATION: ${{ secrets.PBP_LOCATION }}
+        PBP_RATE: ${{ secrets.PBP_RATE }}
+        PBP_DURATION: 6
+        PBP_UNIT: Days
         
-        echo "La tâche de paiement est terminée. Vérifiez le log ci-dessus."
+        # Secrets pour l'injection via inject_secrets()
+        PBP_PLATE: ${{ secrets.PBP_PLATE }}
+        PAYBYPHONE_LOGIN: ${{ secrets.PAYBYPHONE_LOGIN }} 
+        PAYBYPHONE_PASS: ${{ secrets.PAYBYPHONE_PASS }}
+        PBP_PAYMENT_ID: ${{ secrets.PBP_PAYMENT_ID }}
+        
+        # Le PAT GitHub pour la planification des jobs
+        GH_PAT: ${{ secrets.GH_PAT }} 
+        
+      run: python parking_scheduler.py
