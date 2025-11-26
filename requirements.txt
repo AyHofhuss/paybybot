@@ -1,0 +1,5 @@
+pyyaml
+paybybot3
+pytz
+gspread
+oauth2client
