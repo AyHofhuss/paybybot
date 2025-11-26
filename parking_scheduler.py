@@ -5,6 +5,7 @@ import json
 from datetime import datetime, timedelta, timezone
 import time
 import subprocess
+import pytz
 
 # --- Configuration des Limites ---
 MAX_WAIT_SECONDS = 14400  # 4 heures
@@ -22,15 +23,26 @@ REPO_SLUG = os.environ.get('GITHUB_REPOSITORY')
 
 
 def get_paris_end_of_parking_utc(today_utc: datetime) -> datetime:
-    """Calcule le timestamp de fin de stationnement (20h00 Paris) pour la date du jour."""
-    # Décalage de Paris par rapport à UTC (CET/CEST)
-    # L'heure actuelle du runner est 'today_utc'. On regarde le décalage pour l'heure de fin (20h00).
+    """Calcule le timestamp de fin de stationnement (20h00 Paris) pour la date du jour, en UTC."""
     
-    # Pour la précision: 20:00 Paris est 19:00 UTC en hiver (CET) et 18:00 UTC en été (CEST).
-    # Solution simple: utiliser 20h00 locale, on s'assure d'être dans la zone payante.
-
-    end_of_day_paris = today_utc.replace(hour=PARIS_END_PARKING_HOUR_LOCAL, minute=0, second=0, microsecond=0)
-    return end_of_day_paris.astimezone(timezone.utc)
+    paris_tz = pytz.timezone('Europe/Paris')
+    
+    # 1. Obtenir la date du jour à partir de l'heure UTC du runner (pour déterminer "aujourd'hui")
+    today_date_in_paris = today_utc.astimezone(paris_tz).date()
+    
+    # 2. Créer l'objet datetime à 20h00 Paris (heure locale)
+    paris_end_naive = datetime(
+        today_date_in_paris.year, 
+        today_date_in_paris.month, 
+        today_date_in_paris.day, 
+        PARIS_END_PARKING_HOUR_LOCAL, 0, 0
+    )
+    
+    # 3. Localiser (appliquer le fuseau horaire de Paris)
+    paris_end_local = paris_tz.localize(paris_end_naive)
+    
+    # 4. Convertir en UTC pour la comparaison
+    return paris_end_local.astimezone(timezone.utc)
 
 
 def inject_secrets():
@@ -115,9 +127,14 @@ def execute_payment_and_analyze():
              print("Avertissement: Session en cours, mais expireTime n'a pas pu être extrait.", file=sys.stderr)
              sys.exit(0)
              
-        # Conversion en objet datetime
+        # Conversion en objet datetime NAÏF
         date_parts = [int(p) for p in m.group(1).split(', ')]
-        expiry_time_local = datetime(*date_parts, tzinfo=timezone.utc) 
+        naive_expiry = datetime(*date_parts) # <--- NAÏF
+        
+        # ⚠️ Localisation et Conversion en UTC
+        paris_tz = pytz.timezone('Europe/Paris')
+        localized_expiry = paris_tz.localize(naive_expiry)
+        expiry_time_utc = localized_expiry.astimezone(timezone.utc)
         
     except Exception as e:
         print(f"Erreur critique lors de l'extraction de la date d'expiration: {e}", file=sys.stderr)
@@ -125,10 +142,10 @@ def execute_payment_and_analyze():
         
     # Calcul du temps d'attente
     current_time_utc = datetime.now(timezone.utc)
-    wait_time_seconds = int((expiry_time_local.timestamp() + 120) - current_time_utc.timestamp())
-
-    print(f"Session expire le: {expiry_time_local.isoformat()}. Temps restant: {wait_time_seconds} secondes.")
-
+    wait_time_seconds = int((expiry_time_utc.timestamp() + 120) - current_time_utc.timestamp())
+    
+    expiry_time_paris = expiry_time_utc.astimezone(paris_tz)
+    print(f"Session expire le: {expiry_time_utc.isoformat()} (UTC) soit {expiry_time_paris.strftime('%Y-%m-%d %H:%M:%S')} (Paris). Temps restant: {wait_time_seconds} secondes.")
     # ----------------------------------------------------
     # 3. LOGIQUE DE DÉCISION
     # ----------------------------------------------------
@@ -147,14 +164,14 @@ def execute_payment_and_analyze():
         # Fenêtre longue : On planifie et ON QUITTE
         
         # Vérif heure de fin Paris (20h00)
-        paris_end_parking_timestamp = get_paris_end_of_parking_utc(current_time_utc).timestamp()
+        paris_end_parking_timestamp = get_paris_end_of_parking_utc(current_time_utc).timestamp()      
         
-        if expiry_time_local.timestamp() > paris_end_parking_timestamp:
-             print("Session se terminant après 20h00 (heure de Paris). Pas de planification nécessaire.")
-             sys.exit(0)
-
+        if expiry_time_utc.timestamp() > paris_end_parking_timestamp: # <--- CHANGEMENT DE VARIABLE
+            print("Session se terminant après 20h00 (heure de Paris) AUJOURD'HUI. La relance sera gérée par le cron de demain matin.")
+            sys.exit(0)
+        
         # Calcul Dispatch
-        dispatch_timestamp = expiry_time_local.timestamp() - MARGIN_SECONDS
+        dispatch_timestamp = expiry_time_utc.timestamp() - MARGIN_SECONDS
         dispatch_iso = datetime.fromtimestamp(dispatch_timestamp, tz=timezone.utc).isoformat().replace('+00:00', 'Z')
         
         print(f"Action: DISPATCH. Planification d'un job à {dispatch_iso}.")
