@@ -47,8 +47,8 @@ def inject_secrets():
     pbp_login = os.environ['PAYBYPHONE_LOGIN']
     pbp_pass = os.environ['PAYBYPHONE_PASS']
     pbp_payment_id = os.environ['PBP_PAYMENT_ID']
-    notif_user = os.environ['NOTIF_USER']
-    notif_pass = os.environ['NOTIF_PASS']
+    #notif_user = os.environ['NOTIF_USER']
+    #notif_pass = os.environ['NOTIF_PASS']
     
     # Injection des valeurs dans la configuration (en supposant la structure 'example_account')
     account = config.get(CONFIG_NAME, {})
