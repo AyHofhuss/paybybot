@@ -4,8 +4,8 @@ name: Paiement Hebdomadaire & Planification
 
 on:
   schedule:
-    # Tous les jours à 6h UCT soit 7/8h à Paris
-    - cron: '0 6 * * *' 
+    # Déclenche à 6h00 UTC du lundi au samedi (1-6), excluant le dimanche (0)
+    - cron: '0 6 * * 1-6'
   workflow_dispatch: # Permet de lancer manuellement pour les tests
 
 jobs:
