@@ -45,7 +45,7 @@ jobs:
 
       # 2. Installer
       - name: 📦 Installer Dépendances
-        run: pip install pyyaml paybybot3 pytz
+        run: pip install -r requirements.txt
 
       # 3. Injecter les secrets
       - name: 🔒 Injecter les Secrets (Python)
