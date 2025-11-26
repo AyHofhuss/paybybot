@@ -23,7 +23,7 @@ jobs:
         
     - name: 📦 Installer PayByBot3, et les packages
       run: |
-        pip install pyyaml paybybot3
+        pip install pyyaml paybybot3 pytz
         # Installation de l'outil GitHub CLI, nécessaire pour la planification (dispatch)
         sudo apt-get update && sudo apt-get install -y gh
 
