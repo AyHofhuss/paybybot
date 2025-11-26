@@ -43,7 +43,7 @@ def inject_secrets():
         sys.exit(1)
 
     # Récupération des secrets pour injection
-    pbp_plate = os.environ['PBP_PLATE']&
+    pbp_plate = os.environ['PBP_PLATE']
     pbp_login = os.environ['PAYBYPHONE_LOGIN']
     pbp_pass = os.environ['PAYBYPHONE_PASS']
     pbp_payment_id = os.environ['PBP_PAYMENT_ID']
