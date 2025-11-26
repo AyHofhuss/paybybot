@@ -10,6 +10,7 @@ import pytz
 # --- Configuration des Limites ---
 MAX_WAIT_SECONDS = 14400  # 4 heures
 MARGIN_SECONDS = 2700     # 45 minutes pour la relance
+SAFETY_GAP_SECONDS = 180  # 5 minutes de délai après expiration pour relance
 # Heure de fin de stationnement à Paris (20:00 heure locale)
 # Pendant le job, l'heure courante (UTC) est utilisée. 
 # 20h00 CET (hiver, UTC+1) = 19h00 UTC
@@ -129,12 +130,7 @@ def execute_payment_and_analyze():
              
         # Conversion en objet datetime NAÏF
         date_parts = [int(p) for p in m.group(1).split(', ')]
-        naive_expiry = datetime(*date_parts) # <--- NAÏF
-        
-        # ⚠️ Localisation et Conversion en UTC
-        paris_tz = pytz.timezone('Europe/Paris')
-        localized_expiry = paris_tz.localize(naive_expiry)
-        expiry_time_utc = localized_expiry.astimezone(timezone.utc)
+        expiry_time_utc = datetime(*date_parts, tzinfo=timezone.utc)
         
     except Exception as e:
         print(f"Erreur critique lors de l'extraction de la date d'expiration: {e}", file=sys.stderr)
@@ -142,9 +138,12 @@ def execute_payment_and_analyze():
         
     # Calcul du temps d'attente
     current_time_utc = datetime.now(timezone.utc)
-    wait_time_seconds = int((expiry_time_utc.timestamp() + 120) - current_time_utc.timestamp())
-    
+    wait_time_seconds = int((expiry_time_utc.timestamp() + SAFETY_GAP_SECONDS) - current_time_utc.timestamp())
+
+    # --- AFFICHAGE CLAIR (UTC et Paris Local) ---
+    paris_tz = pytz.timezone('Europe/Paris') # Nécessaire pour la conversion d'affichage
     expiry_time_paris = expiry_time_utc.astimezone(paris_tz)
+    
     print(f"Session expire le: {expiry_time_utc.isoformat()} (UTC) soit {expiry_time_paris.strftime('%Y-%m-%d %H:%M:%S')} (Paris). Temps restant: {wait_time_seconds} secondes.")
     # ----------------------------------------------------
     # 3. LOGIQUE DE DÉCISION
@@ -171,7 +170,7 @@ def execute_payment_and_analyze():
             sys.exit(0)
         
         # Calcul Dispatch
-        dispatch_timestamp = expiry_time_utc.timestamp() - MARGIN_SECONDS
+        dispatch_timestamp = expiry_time_utc.timestamp() + SAFETY_GAP_SECONDS - MARGIN_SECONDS
         dispatch_iso = datetime.fromtimestamp(dispatch_timestamp, tz=timezone.utc).isoformat().replace('+00:00', 'Z')
         
         print(f"Action: DISPATCH. Planification d'un job à {dispatch_iso}.")
