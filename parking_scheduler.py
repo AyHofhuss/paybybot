@@ -167,7 +167,7 @@ def execute_payment_and_analyze():
         paris_end_parking_timestamp = get_paris_end_of_parking_utc(current_time_utc).timestamp()      
         
         if expiry_time_utc.timestamp() > paris_end_parking_timestamp: # <--- CHANGEMENT DE VARIABLE
-            print("Session se terminant après 20h00 (heure de Paris) AUJOURD'HUI. La relance sera gérée par le cron de demain matin.")
+            print("Session se terminant après aujourd'hui 20h00 (heure de Paris), la relance sera gérée par le cron de demain matin.")
             sys.exit(0)
         
         # Calcul Dispatch
